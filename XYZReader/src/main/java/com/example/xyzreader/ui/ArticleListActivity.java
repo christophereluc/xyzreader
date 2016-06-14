@@ -7,28 +7,24 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.Loader;
 import android.database.Cursor;
+import android.databinding.DataBindingUtil;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.StaggeredGridLayoutManager;
-import android.support.v7.widget.Toolbar;
 import android.text.format.DateUtils;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.example.xyzreader.R;
 import com.example.xyzreader.data.ArticleLoader;
 import com.example.xyzreader.data.ItemsContract;
 import com.example.xyzreader.data.UpdaterService;
-
-import butterknife.BindView;
-import butterknife.ButterKnife;
+import com.example.xyzreader.databinding.ActivityArticleListBinding;
+import com.example.xyzreader.databinding.ListItemArticleBinding;
 
 /**
  * An activity representing a list of Articles. This activity has different presentations for
@@ -39,15 +35,10 @@ import butterknife.ButterKnife;
 public class ArticleListActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor>, SwipeRefreshLayout.OnRefreshListener {
 
-    @BindView(R.id.toolbar)
-    Toolbar mToolbar;
-    @BindView(R.id.swipe_refresh_layout)
-    SwipeRefreshLayout mSwipeRefreshLayout;
-    @BindView(R.id.recycler_view)
-    RecyclerView mRecyclerView;
-    @BindView(R.id.collapsing_toolbar)
-    CollapsingToolbarLayout mCollapsingToolbar;
     private boolean mIsRefreshing = false;
+
+    private ActivityArticleListBinding mBinding;
+
     private BroadcastReceiver mRefreshingReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -61,10 +52,10 @@ public class ArticleListActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_article_list);
-        ButterKnife.bind(this);
-        setSupportActionBar(mToolbar);
-        mCollapsingToolbar.setTitle(getString(R.string.app_name));
+        mBinding = DataBindingUtil.setContentView(this, R.layout.activity_article_list);
+        setSupportActionBar(mBinding.toolbar);
+        mBinding.collapsingToolbar.setTitle(getString(R.string.app_name));
+        mBinding.swipeRefreshLayout.setOnRefreshListener(this);
         getLoaderManager().initLoader(0, null, this);
 
         if (savedInstanceState == null) {
@@ -86,7 +77,7 @@ public class ArticleListActivity extends AppCompatActivity implements
     }
 
     private void updateRefreshingUI() {
-        mSwipeRefreshLayout.setRefreshing(mIsRefreshing);
+        mBinding.swipeRefreshLayout.setRefreshing(mIsRefreshing);
     }
 
     @Override
@@ -98,16 +89,16 @@ public class ArticleListActivity extends AppCompatActivity implements
     public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
         Adapter adapter = new Adapter(cursor);
         adapter.setHasStableIds(true);
-        mRecyclerView.setAdapter(adapter);
+        mBinding.recyclerView.setAdapter(adapter);
         int columnCount = getResources().getInteger(R.integer.list_column_count);
-        StaggeredGridLayoutManager sglm =
-                new StaggeredGridLayoutManager(columnCount, StaggeredGridLayoutManager.VERTICAL);
-        mRecyclerView.setLayoutManager(sglm);
+        GridLayoutManager sglm =
+                new GridLayoutManager(this, columnCount);
+        mBinding.recyclerView.setLayoutManager(sglm);
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
-        mRecyclerView.setAdapter(null);
+        mBinding.recyclerView.setAdapter(null);
     }
 
     @Override
@@ -116,16 +107,12 @@ public class ArticleListActivity extends AppCompatActivity implements
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        @BindView(R.id.thumbnail)
-        ImageView thumbnailView;
-        @BindView(R.id.article_title)
-        TextView titleView;
-        @BindView(R.id.article_subtitle)
-        TextView subtitleView;
+
+        ListItemArticleBinding mBinding;
 
         public ViewHolder(View view) {
             super(view);
-            ButterKnife.bind(this, view);
+            mBinding = DataBindingUtil.bind(view);
         }
     }
 
@@ -159,17 +146,17 @@ public class ArticleListActivity extends AppCompatActivity implements
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
             mCursor.moveToPosition(position);
-            holder.titleView.setText(mCursor.getString(ArticleLoader.Query.TITLE));
-            holder.subtitleView.setText(
+            holder.mBinding.articleTitle.setText(mCursor.getString(ArticleLoader.Query.TITLE));
+            holder.mBinding.articleSubtitle.setText(
                     DateUtils.getRelativeTimeSpanString(
                             mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
                             System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
                             DateUtils.FORMAT_ABBREV_ALL).toString()
                             + " by "
                             + mCursor.getString(ArticleLoader.Query.AUTHOR));
-            Glide.clear(holder.thumbnailView);
-            Glide.with(holder.thumbnailView.getContext()).load(Uri.parse(mCursor.getString(ArticleLoader.Query.THUMB_URL))).centerCrop()
-                    .into(holder.thumbnailView);
+            Glide.clear(holder.mBinding.thumbnail);
+            Glide.with(holder.mBinding.thumbnail.getContext()).load(Uri.parse(mCursor.getString(ArticleLoader.Query.THUMB_URL))).centerCrop()
+                    .into(holder.mBinding.thumbnail);
         }
 
         @Override
