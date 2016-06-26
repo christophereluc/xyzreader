@@ -9,4 +9,7 @@
 
     <string name="up">Up</string>
 
+    <string name="cd_image">background image</string>
+
+    <string name="image_transition">image</string>
 </resources>

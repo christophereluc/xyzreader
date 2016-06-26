@@ -8,4 +8,7 @@
     <dimen name="fab_press_translation_z">6dp</dimen>
     <dimen name="fab_margin">24dp</dimen>
 
+    <dimen name="image_view_height">250dp</dimen>
+    <dimen name="list_header_height">175dp</dimen>
+
 </resources>

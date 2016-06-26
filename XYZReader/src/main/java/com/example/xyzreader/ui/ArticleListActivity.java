@@ -1,5 +1,6 @@
 package com.example.xyzreader.ui;
 
+import android.app.ActivityOptions;
 import android.app.LoaderManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -9,22 +10,24 @@ import android.content.Loader;
 import android.database.Cursor;
 import android.databinding.DataBindingUtil;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.format.DateUtils;
+import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.bumptech.glide.Glide;
 import com.example.xyzreader.R;
 import com.example.xyzreader.data.ArticleLoader;
-import com.example.xyzreader.data.ItemsContract;
 import com.example.xyzreader.data.UpdaterService;
 import com.example.xyzreader.databinding.ActivityArticleListBinding;
 import com.example.xyzreader.databinding.ListItemArticleBinding;
+import com.example.xyzreader.model.Article;
 
 /**
  * An activity representing a list of Articles. This activity has different presentations for
@@ -38,6 +41,7 @@ public class ArticleListActivity extends AppCompatActivity implements
     private boolean mIsRefreshing = false;
 
     private ActivityArticleListBinding mBinding;
+    private DisplayMetrics mMetrics;
 
     private BroadcastReceiver mRefreshingReceiver = new BroadcastReceiver() {
         @Override
@@ -57,6 +61,9 @@ public class ArticleListActivity extends AppCompatActivity implements
         mBinding.collapsingToolbar.setTitle(getString(R.string.app_name));
         mBinding.swipeRefreshLayout.setOnRefreshListener(this);
         getLoaderManager().initLoader(0, null, this);
+
+        mMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(mMetrics);
 
         if (savedInstanceState == null) {
             onRefresh();
@@ -136,8 +143,25 @@ public class ArticleListActivity extends AppCompatActivity implements
             view.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    startActivity(new Intent(Intent.ACTION_VIEW,
-                                             ItemsContract.Items.buildItemUri(getItemId(vh.getAdapterPosition()))));
+                    Intent i = new Intent(view.getContext(), ArticleDetailActivity.class);
+                    i.putExtra(ArticleDetailActivity.ARG_ITEM_ID, getItemId(vh.getAdapterPosition()));
+                    mCursor.moveToPosition(vh.getAdapterPosition());
+                    Article article = new Article();
+                    article.author = mCursor.getString(ArticleLoader.Query.AUTHOR);
+                    article.published_date = mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE);
+                    article.imageUrl = mCursor.getString(ArticleLoader.Query.PHOTO_URL);
+                    article.body = mCursor.getString(ArticleLoader.Query.BODY);
+                    article.title = mCursor.getString(ArticleLoader.Query.TITLE);
+
+                    if (Build.VERSION.SDK_INT >= 21) {
+                        ActivityOptions options = ActivityOptions.makeSceneTransitionAnimation(ArticleListActivity.this,
+                                vh.mBinding.thumbnail,
+                                getString(R.string.image_transition));
+                        startActivity(ArticleDetailActivity.generateLaunchingIntent(article, ArticleListActivity.this), options.toBundle());
+                    }
+                    else {
+                        startActivity(ArticleDetailActivity.generateLaunchingIntent(article, ArticleListActivity.this));
+                    }
                 }
             });
             return vh;
@@ -147,15 +171,13 @@ public class ArticleListActivity extends AppCompatActivity implements
         public void onBindViewHolder(ViewHolder holder, int position) {
             mCursor.moveToPosition(position);
             holder.mBinding.articleTitle.setText(mCursor.getString(ArticleLoader.Query.TITLE));
-            holder.mBinding.articleSubtitle.setText(
+            holder.mBinding.articleSubtitle.setText(new StringBuilder(
                     DateUtils.getRelativeTimeSpanString(
                             mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
                             System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
-                            DateUtils.FORMAT_ABBREV_ALL).toString()
-                            + " by "
-                            + mCursor.getString(ArticleLoader.Query.AUTHOR));
+                            DateUtils.FORMAT_ABBREV_ALL).toString()).append(" by ").append(mCursor.getString(ArticleLoader.Query.AUTHOR)));
             Glide.clear(holder.mBinding.thumbnail);
-            Glide.with(holder.mBinding.thumbnail.getContext()).load(Uri.parse(mCursor.getString(ArticleLoader.Query.THUMB_URL))).centerCrop()
+            Glide.with(holder.mBinding.thumbnail.getContext()).load(Uri.parse(mCursor.getString(ArticleLoader.Query.PHOTO_URL))).centerCrop()
                     .into(holder.mBinding.thumbnail);
         }
 
